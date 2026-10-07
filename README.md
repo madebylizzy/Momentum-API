@@ -370,3 +370,10 @@ This strict convention eliminates client-side guesswork, allows generic network 
 On serverless deployment targets (such as Vercel), functions execute across ephemeral, stateless containers that spin up and down dynamically. An in-memory rate limiter (e.g. a Node.js `Map`) resets on every container cold start and fails to coordinate state across concurrent instances, rendering rate limiting ineffective in production. 
 Momentum Properties API stores rate limit counters in a dedicated `RateLimitBucket` table in PostgreSQL, keyed on `${ip}:${endpoint}` with atomic upserts and window tracking. This guarantees rate limits are strictly enforced across all serverless function instances.
 Configuration parameters live in `lib/config/rate-limit.ts` rather than hardcoded in route handlers.
+
+### 6. Pooled vs. Direct Database Connections (Neon & Prisma)
+Serverless architectures instantiate multiple ephemeral execution environments that can quickly exhaust PostgreSQL's maximum connection limit if each function connects directly.
+- **`DATABASE_URL` (Pooled Connection):** Uses Neon's connection pooler (PgBouncer with `-pooler` in the host). This connection pool is used by the Next.js runtime application for querying, keeping connection counts bounded.
+- **`DIRECT_URL` (Direct Connection):** Provides an unpooled, direct connection to the underlying PostgreSQL instance. Prisma CLI migrations and schema-level administrative commands require features (such as prepared statements and transactional locks) that connection poolers like PgBouncer do not support.
+Configuring `directUrl = env("DIRECT_URL")` in `prisma/schema.prisma` guarantees that runtime traffic operates through the pooler while migrations and CLI tasks run safely against the direct endpoint.
+
