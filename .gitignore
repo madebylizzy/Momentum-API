@@ -40,3 +40,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ai tool configs
+.agents
+.claude
+.cursor
+.devin
+
