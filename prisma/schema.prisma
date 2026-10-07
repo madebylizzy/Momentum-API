@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String
+  agencyName    String
+  city          String
+  licenseNumber String   @unique
+  status        String   @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  listings Listing[]
+
+  @@index([city])
+  @@index([status])
+}
+
+model Listing {
+  id           String   @id @default(cuid())
+  title        String
+  description  String
+  price        Int // Stored in USD minor units (cents, e.g. $500,000.00 = 50000000)
+  propertyType String // APARTMENT | HOUSE | CONDO | TOWNHOUSE | LAND
+  status       String   @default("AVAILABLE") // AVAILABLE | PENDING | SOLD | RENTED
+  bedrooms     Int
+  bathrooms    Float // Float to support half-baths (e.g. 1.5, 2.5)
+  squareFeet   Int?
+  address      String
+  city         String
+  state        String
+  zipCode      String
+  agentId      String
+  agent        Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  viewings Viewing[]
+
+  @@index([city])
+  @@index([price])
+  @@index([agentId])
+  @@index([status])
+}
+
+model Viewing {
+  id          String   @id @default(cuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  viewerName  String
+  viewerEmail String
+  viewerPhone String
+  scheduledAt DateTime
+  status      String   @default("SCHEDULED") // SCHEDULED | COMPLETED | CANCELLED | NO_SHOW
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([status])
+}
+
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  key         String   @unique // Composite key: ${ip}:${endpoint}
+  count       Int      @default(1)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}
