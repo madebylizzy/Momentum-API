@@ -373,7 +373,8 @@ Configuration parameters live in `lib/config/rate-limit.ts` rather than hardcode
 
 > **Shared NAT Behavior:** Rate limiting is enforced per public IP address. Clients operating behind a shared NAT gateway or corporate proxy share a common rate limit bucket for each endpoint.
 
-> **Proxy Trust Assumption:** The rate limiter trusts `x-forwarded-for` (and `x-vercel-forwarded-for` / `x-real-ip`) strictly because Vercel's managed edge network inspects, populates, and sanitizes incoming headers before routing traffic to serverless functions. This rate limiting strategy relies explicitly on the platform's trusted edge layer and would not be safe behind an arbitrary or unmanaged reverse proxy where clients could spoof `X-Forwarded-For` headers. In production, requests missing IP proxy headers fail loudly by logging a warning and keying to `'no-ip-header'` to prevent silent fallback collapse.
+> **Proxy Trust Assumption:** According to official Vercel documentation ([https://vercel.com/docs/headers/request-headers](https://vercel.com/docs/headers/request-headers)): *"If you are trying to use Vercel behind a proxy, we currently overwrite the `X-Forwarded-For` header and **do not forward external IPs**. This restriction is in place to prevent IP spoofing."* The rate limiter trusts `x-forwarded-for` (and platform fallbacks `x-vercel-forwarded-for` / `x-real-ip`) strictly because Vercel's managed edge network overwrites client-supplied headers with the verified public client IP. This rate limiting strategy relies explicitly on this platform-level edge guarantee and would not be safe behind an unmanaged reverse proxy where arbitrary client-supplied `X-Forwarded-For` values could be forwarded. In production, requests missing IP proxy headers fail loudly by logging a warning and keying to `'no-ip-header'` to prevent silent fallback collapse.
+
 
 
 ### 6. Pooled vs. Direct Database Connections (Neon & Prisma)
