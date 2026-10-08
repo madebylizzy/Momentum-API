@@ -7,10 +7,13 @@ export interface RateLimitResult {
 }
 
 /**
- * Extracts client IP from standard proxy headers, falling back to localhost.
+ * Extracts client IP from standard proxy headers.
+ * In production (NODE_ENV === "production"), missing headers log a warning and return
+ * "no-ip-header" so collapsed buckets are identifiable in the RateLimitBucket table.
+ * Falls back to "127.0.0.1" only in local development.
  */
 export function getClientIp(request: Request): string {
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  const forwardedFor = request.headers.get("x-forwarded-for") || request.headers.get("x-vercel-forwarded-for");
   if (forwardedFor) {
     return forwardedFor.split(",")[0].trim();
   }
@@ -18,6 +21,14 @@ export function getClientIp(request: Request): string {
   if (realIp) {
     return realIp.trim();
   }
+
+  if (process.env.NODE_ENV === "production") {
+    console.warn(
+      "[RateLimit] Missing IP headers (x-forwarded-for / x-real-ip) in production request; falling back to 'no-ip-header'"
+    );
+    return "no-ip-header";
+  }
+
   return "127.0.0.1";
 }
 

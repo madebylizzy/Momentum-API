@@ -371,6 +371,11 @@ On serverless deployment targets (such as Vercel), functions execute across ephe
 Momentum Properties API stores rate limit counters in a dedicated `RateLimitBucket` table in PostgreSQL, keyed on `${ip}:${endpoint}` with atomic upserts and window tracking. This guarantees rate limits are strictly enforced across all serverless function instances.
 Configuration parameters live in `lib/config/rate-limit.ts` rather than hardcoded in route handlers.
 
+> **Shared NAT Behavior:** Rate limiting is enforced per public IP address. Clients operating behind a shared NAT gateway or corporate proxy share a common rate limit bucket for each endpoint.
+
+> **Proxy Trust Assumption:** The rate limiter trusts `x-forwarded-for` (and `x-vercel-forwarded-for` / `x-real-ip`) strictly because Vercel's managed edge network inspects, populates, and sanitizes incoming headers before routing traffic to serverless functions. This rate limiting strategy relies explicitly on the platform's trusted edge layer and would not be safe behind an arbitrary or unmanaged reverse proxy where clients could spoof `X-Forwarded-For` headers. In production, requests missing IP proxy headers fail loudly by logging a warning and keying to `'no-ip-header'` to prevent silent fallback collapse.
+
+
 ### 6. Pooled vs. Direct Database Connections (Neon & Prisma)
 Serverless architectures instantiate multiple ephemeral execution environments that can quickly exhaust PostgreSQL's maximum connection limit if each function connects directly.
 - **`DATABASE_URL` (Pooled Connection):** Uses Neon's connection pooler (PgBouncer with `-pooler` in the host). This connection pool is used by the Next.js runtime application for querying, keeping connection counts bounded.
