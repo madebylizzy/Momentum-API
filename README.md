@@ -380,6 +380,6 @@ Configuration parameters live in `lib/config/rate-limit.ts` rather than hardcode
 ### 6. Pooled vs. Direct Database Connections (Neon & Prisma)
 Serverless architectures instantiate multiple ephemeral execution environments that can quickly exhaust PostgreSQL's maximum connection limit if each function connects directly.
 - **`DATABASE_URL` (Pooled Connection):** Uses Neon's connection pooler (PgBouncer with `-pooler` in the host). This connection pool is used by the Next.js runtime application for querying, keeping connection counts bounded.
-- **`DIRECT_URL` (Direct Connection):** Provides an unpooled, direct connection to the underlying PostgreSQL instance. Prisma CLI migrations and schema-level administrative commands require features (such as prepared statements and transactional locks) that connection poolers like PgBouncer do not support.
-Configuring `directUrl = env("DIRECT_URL")` in `prisma/schema.prisma` guarantees that runtime traffic operates through the pooler while migrations and CLI tasks run safely against the direct endpoint.
+- **`DATABASE_URL_UNPOOLED` (Direct Connection):** Provides an unpooled, direct connection to the underlying PostgreSQL instance. Prisma CLI migrations and schema-level administrative commands require features (such as prepared statements and transactional locks) that connection poolers like PgBouncer do not support.
+Configuring `directUrl = env("DATABASE_URL_UNPOOLED")` in `prisma/schema.prisma` guarantees that runtime traffic operates through the pooler while migrations and CLI tasks run safely against the direct endpoint.
 
