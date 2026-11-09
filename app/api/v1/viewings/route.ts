@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { successCollection, successItem, errorResponse } from "@/lib/response";
 import { withErrorHandler } from "@/lib/api-handler";
+import { verifyWriteAuth } from "@/lib/auth";
 import {
   parsePaginationAndSorting,
   formatZodError,
@@ -97,6 +98,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       429,
       { "Retry-After": String(rateLimit.retryAfter ?? 60) }
     );
+  }
+
+  const authError = verifyWriteAuth(request);
+  if (authError) {
+    return authError;
   }
 
   let body: unknown;

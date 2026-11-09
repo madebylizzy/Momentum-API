@@ -70,7 +70,7 @@ Per §1b — persistent store, numbers (requests per window, window length) in a
 
 ## 4. Out of Scope
 Do NOT build:
-- Authentication for reading
+- Authentication for reading (reads remain public; as an approved exception, write endpoints — POST, PATCH, DELETE — are protected by a shared API key via the `x-api-key` header)
 - A landing page or marketing page
 - An admin panel
 - Anything beyond the minimal consumer (list, filter, next-page button)

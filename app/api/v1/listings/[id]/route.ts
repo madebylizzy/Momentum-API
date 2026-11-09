@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { successItem, errorResponse } from "@/lib/response";
 import { withErrorHandler } from "@/lib/api-handler";
+import { verifyWriteAuth } from "@/lib/auth";
 import { validateIdentifier, formatZodError } from "@/lib/validations/common";
 import { updateListingSchema } from "@/lib/validations/listings";
 import { Prisma } from "@prisma/client";
@@ -67,6 +68,11 @@ export const PATCH = withErrorHandler(async (request: NextRequest, context: Rout
     );
   }
 
+  const authError = verifyWriteAuth(request);
+  if (authError) {
+    return authError;
+  }
+
   const { id } = await context.params;
 
   const validation = validateIdentifier(id);
@@ -116,6 +122,11 @@ export const DELETE = withErrorHandler(async (request: NextRequest, context: Rou
       429,
       { "Retry-After": String(rateLimit.retryAfter ?? 60) }
     );
+  }
+
+  const authError = verifyWriteAuth(request);
+  if (authError) {
+    return authError;
   }
 
   const { id } = await context.params;

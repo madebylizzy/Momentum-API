@@ -24,11 +24,11 @@ Relationships: an agent has many listings; a listing has many viewings; a viewin
 - Full README documentation: every endpoint, every query parameter with type and default, a curl example and example response for each, plus a "Design decisions" section
 
 ## 4. What I Am NOT Building
-- Authentication for reading (the API is public)
+- Authentication for reading (the read API is public; write endpoints — POST, PATCH, DELETE — are protected by a shared API write key via the `x-api-key` header)
 - Any interface beyond the minimal consumer
 - A landing page
 - An admin panel
-- Write authentication beyond what's needed to demonstrate the mutation endpoints work (state this choice plainly if write endpoints are left open for demo purposes, or gate them simply — decide and document, don't leave it ambiguous)
+- Complex multi-user write permissions beyond the shared write-key gate
 
 ## 5. Identifiers
 Every resource uses a generated, non-sequential identifier (cuid or UUID) — never an auto-incrementing integer. State this explicitly in the README's Design Decisions section, with the actual reason: sequential integers let anyone enumerate the entire dataset by counting.
