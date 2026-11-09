@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { successItem, errorResponse } from "@/lib/response";
+import { withErrorHandler } from "@/lib/api-handler";
 import { validateIdentifier, formatZodError } from "@/lib/validations/common";
 import { updateListingSchema } from "@/lib/validations/listings";
 import { Prisma } from "@prisma/client";
@@ -10,7 +11,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
+export const GET = withErrorHandler(async (request: NextRequest, context: RouteContext) => {
   const rateLimit = await checkRateLimit(request, "/api/v1/listings/[id]");
   if (!rateLimit.success) {
     return errorResponse(
@@ -53,9 +54,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   return successItem(listing);
-}
+});
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+export const PATCH = withErrorHandler(async (request: NextRequest, context: RouteContext) => {
   const rateLimit = await checkRateLimit(request, "/api/v1/listings/[id]");
   if (!rateLimit.success) {
     return errorResponse(
@@ -104,9 +105,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
     return errorResponse("INTERNAL_ERROR", "Failed to update listing", 500);
   }
-}
+});
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export const DELETE = withErrorHandler(async (request: NextRequest, context: RouteContext) => {
   const rateLimit = await checkRateLimit(request, "/api/v1/listings/[id]");
   if (!rateLimit.success) {
     return errorResponse(
@@ -138,4 +139,4 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
     return errorResponse("INTERNAL_ERROR", "Failed to delete listing", 500);
   }
-}
+});

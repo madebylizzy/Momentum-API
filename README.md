@@ -375,6 +375,8 @@ Configuration parameters live in `lib/config/rate-limit.ts` rather than hardcode
 
 > **Proxy Trust Assumption:** According to official Vercel documentation ([https://vercel.com/docs/headers/request-headers](https://vercel.com/docs/headers/request-headers)): *"If you are trying to use Vercel behind a proxy, we currently overwrite the `X-Forwarded-For` header and **do not forward external IPs**. This restriction is in place to prevent IP spoofing."* The rate limiter trusts `x-forwarded-for` (and platform fallbacks `x-vercel-forwarded-for` / `x-real-ip`) strictly because Vercel's managed edge network overwrites client-supplied headers with the verified public client IP. This rate limiting strategy relies explicitly on this platform-level edge guarantee and would not be safe behind an unmanaged reverse proxy where arbitrary client-supplied `X-Forwarded-For` values could be forwarded. In production, requests missing IP proxy headers fail loudly by logging a warning and keying to `'no-ip-header'` to prevent silent fallback collapse.
 
+> **Store Failure Strategy (Fail-Open):** If the persistent rate-limiting store (PostgreSQL `RateLimitBucket` table or connection) encounters an infrastructure outage or transaction failure, the rate limiter logs the error via `console.error` and **fails open**, allowing the request to proceed. This architectural choice prioritizes uptime and availability of a public read API over strict request throttling during a storage outage. Destructive mutations (writes) remain securely gated by the API write key regardless of rate-limiter store availability.
+
 
 
 ### 6. Pooled vs. Direct Database Connections (Neon & Prisma)

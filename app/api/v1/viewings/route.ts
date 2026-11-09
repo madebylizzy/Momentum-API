@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { successCollection, successItem, errorResponse } from "@/lib/response";
+import { withErrorHandler } from "@/lib/api-handler";
 import {
   parsePaginationAndSorting,
   formatZodError,
@@ -12,7 +13,7 @@ import {
 } from "@/lib/validations/viewings";
 import { Prisma } from "@prisma/client";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const rateLimit = await checkRateLimit(request, "/api/v1/viewings");
   if (!rateLimit.success) {
     return errorResponse(
@@ -85,9 +86,9 @@ export async function GET(request: NextRequest) {
     offset,
     hasMore,
   });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const rateLimit = await checkRateLimit(request, "/api/v1/viewings");
   if (!rateLimit.success) {
     return errorResponse(
@@ -153,4 +154,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return errorResponse("INTERNAL_ERROR", "Failed to create viewing", 500);
   }
-}
+});

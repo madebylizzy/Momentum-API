@@ -40,50 +40,58 @@ export async function checkRateLimit(
   request: Request,
   endpoint: string
 ): Promise<RateLimitResult> {
-  const ip = getClientIp(request);
-  const key = `${ip}:${endpoint}`;
+  try {
+    const ip = getClientIp(request);
+    const key = `${ip}:${endpoint}`;
 
-  const now = new Date();
-  const windowMs = RATE_LIMIT_CONFIG.windowSeconds * 1000;
-  const windowThreshold = new Date(now.getTime() - windowMs);
+    const now = new Date();
+    const windowMs = RATE_LIMIT_CONFIG.windowSeconds * 1000;
+    const windowThreshold = new Date(now.getTime() - windowMs);
 
-  return await prisma.$transaction(async (tx) => {
-    const bucket = await tx.rateLimitBucket.findUnique({
-      where: { key },
-    });
-
-    // If bucket doesn't exist or previous window expired, reset to 1
-    if (!bucket || bucket.windowStart < windowThreshold) {
-      await tx.rateLimitBucket.upsert({
+    return await prisma.$transaction(async (tx) => {
+      const bucket = await tx.rateLimitBucket.findUnique({
         where: { key },
-        update: {
-          count: 1,
-          windowStart: now,
-        },
-        create: {
-          key,
-          count: 1,
-          windowStart: now,
+      });
+
+      // If bucket doesn't exist or previous window expired, reset to 1
+      if (!bucket || bucket.windowStart < windowThreshold) {
+        await tx.rateLimitBucket.upsert({
+          where: { key },
+          update: {
+            count: 1,
+            windowStart: now,
+          },
+          create: {
+            key,
+            count: 1,
+            windowStart: now,
+          },
+        });
+        return { success: true };
+      }
+
+      // If within current window and exceeded max allowed requests
+      if (bucket.count >= RATE_LIMIT_CONFIG.maxRequests) {
+        const elapsedMs = now.getTime() - bucket.windowStart.getTime();
+        const retryAfter = Math.max(1, Math.ceil((windowMs - elapsedMs) / 1000));
+        return { success: false, retryAfter };
+      }
+
+      // Increment count atomically
+      await tx.rateLimitBucket.update({
+        where: { key },
+        data: {
+          count: { increment: 1 },
         },
       });
+
       return { success: true };
-    }
-
-    // If within current window and exceeded max allowed requests
-    if (bucket.count >= RATE_LIMIT_CONFIG.maxRequests) {
-      const elapsedMs = now.getTime() - bucket.windowStart.getTime();
-      const retryAfter = Math.max(1, Math.ceil((windowMs - elapsedMs) / 1000));
-      return { success: false, retryAfter };
-    }
-
-    // Increment count atomically
-    await tx.rateLimitBucket.update({
-      where: { key },
-      data: {
-        count: { increment: 1 },
-      },
     });
-
+  } catch (error) {
+    console.error(
+      `[RateLimit] Persistent rate-limit store failure on endpoint '${endpoint}'; failing open:`,
+      error
+    );
     return { success: true };
-  });
+  }
 }
