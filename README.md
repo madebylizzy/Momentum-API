@@ -385,3 +385,46 @@ Serverless architectures instantiate multiple ephemeral execution environments t
 - **`DATABASE_URL_UNPOOLED` (Direct Connection):** Provides an unpooled, direct connection to the underlying PostgreSQL instance. Prisma CLI migrations and schema-level administrative commands require features (such as prepared statements and transactional locks) that connection poolers like PgBouncer do not support.
 Configuring `directUrl = env("DATABASE_URL_UNPOOLED")` in `prisma/schema.prisma` guarantees that runtime traffic operates through the pooler while migrations and CLI tasks run safely against the direct endpoint.
 
+---
+
+## 5. Write-Gate Security & Verification Evidence
+
+Write operations (`POST`, `PATCH`, `DELETE`) across all `/api/v1` resources are protected by a shared API write key passed via the `x-api-key` HTTP header. 
+
+### Security Invariants:
+1. **Timing-Safe Comparison:** The key is compared using `crypto.timingSafeEqual` (checking buffer lengths first) to prevent timing-oracle attacks.
+2. **Credential Redaction:** The API write key is never logged, echoed, or included in error payloads.
+3. **Pipeline Ordering:** Write authentication executes **after** rate-limiting and **before** request body parsing and schema validation. An unauthorized write request with an invalid body returns `401 Unauthorized` (never `422 Unprocessable Entity`).
+4. **Fail-Closed Protection:** If `API_WRITE_KEY` is unset or misconfigured in the server environment, all write operations immediately reject with `503 Service Unavailable` (`SERVICE_UNAVAILABLE`).
+5. **Public Reads:** `GET` and `HEAD` operations remain strictly public and require no authentication.
+
+### Automated Test Matrix Evidence (`scripts/test-write-gate.ts`):
+
+| Category | Method | Endpoint | Key State | Expected | Actual | Envelope Code | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| No Key Matrix | `POST` | `/api/v1/agents` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `PATCH` | `/api/v1/agents/nonexistent_id` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `DELETE` | `/api/v1/agents/nonexistent_id` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `POST` | `/api/v1/listings` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `PATCH` | `/api/v1/listings/nonexistent_id` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `DELETE` | `/api/v1/listings/nonexistent_id` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `POST` | `/api/v1/viewings` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `PATCH` | `/api/v1/viewings/nonexistent_id` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| No Key Matrix | `DELETE` | `/api/v1/viewings/nonexistent_id` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `POST` | `/api/v1/agents` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `PATCH` | `/api/v1/agents/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `DELETE` | `/api/v1/agents/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `POST` | `/api/v1/listings` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `PATCH` | `/api/v1/listings/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `DELETE` | `/api/v1/listings/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `POST` | `/api/v1/viewings` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `PATCH` | `/api/v1/viewings/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Wrong Key Matrix | `DELETE` | `/api/v1/viewings/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Gate Ordering Proof | `POST` | `/api/v1/agents` | None (Invalid Body) | 401 | 401 | `UNAUTHORIZED` | PASS |
+| Public Read Access | `GET` | `/api/v1/listings?limit=1` | None | 200 | 200 | `OK` | PASS |
+| Authorized Write Lifecycle | `POST` | `/api/v1/agents` | Valid Key | 201 | 201 | `CREATED` | PASS |
+| Authorized Write Lifecycle | `DELETE` | `/api/v1/agents/cmw93xwko00067cq05nk6q1z8` | Valid Key | 200 | 200 | `DELETED` | PASS |
+| Fail-Closed Verification | `POST` | `/api/v1/agents` | Unset on Server | 503 | 503 | `SERVICE_UNAVAILABLE` | PASS |
+| Fail-Closed Verification | `GET` | `/api/v1/listings?limit=1` | Unset on Server | 200 | 200 | `OK` | PASS |
+
+
