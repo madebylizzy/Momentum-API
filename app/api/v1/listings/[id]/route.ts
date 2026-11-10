@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { successItem, errorResponse } from "@/lib/response";
-import { withErrorHandler } from "@/lib/api-handler";
+import { withErrorHandler, handleOptions } from "@/lib/api-handler";
 import { verifyWriteAuth } from "@/lib/auth";
 import { validateIdentifier, formatZodError } from "@/lib/validations/common";
 import { updateListingSchema } from "@/lib/validations/listings";
@@ -151,3 +151,5 @@ export const DELETE = withErrorHandler(async (request: NextRequest, context: Rou
     return errorResponse("INTERNAL_ERROR", "Failed to delete listing", 500);
   }
 });
+
+export const OPTIONS = handleOptions;

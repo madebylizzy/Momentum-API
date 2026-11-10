@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { successCollection, successItem, errorResponse } from "@/lib/response";
-import { withErrorHandler } from "@/lib/api-handler";
+import { withErrorHandler, handleOptions } from "@/lib/api-handler";
 import { verifyWriteAuth } from "@/lib/auth";
 import {
   parsePaginationAndSorting,
@@ -127,3 +127,5 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     return errorResponse("INTERNAL_ERROR", "Failed to create agent", 500);
   }
 });
+
+export const OPTIONS = handleOptions;
