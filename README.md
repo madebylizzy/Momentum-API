@@ -2,6 +2,14 @@
 
 Task 1 — Build and Serve a Consumable REST API for Momentum Properties.
 
+- **Live Production API URL:** `https://momentum-api-ruby.vercel.app`
+- **Consumer Application:** Located in [`consumer/index.html`](file:///c:/Users/NEW%20USER/Desktop/API/consumer/index.html) (plain HTML/CSS/JS with zero build step)
+
+### Quickstart (Copy-Paste cURL)
+```bash
+curl -s -i "https://momentum-api-ruby.vercel.app/api/v1/listings?limit=2"
+```
+
 ---
 
 ## 1. Resource Design
@@ -384,6 +392,34 @@ Serverless architectures instantiate multiple ephemeral execution environments t
 - **`DATABASE_URL` (Pooled Connection):** Uses Neon's connection pooler (PgBouncer with `-pooler` in the host). This connection pool is used by the Next.js runtime application for querying, keeping connection counts bounded.
 - **`DATABASE_URL_UNPOOLED` (Direct Connection):** Provides an unpooled, direct connection to the underlying PostgreSQL instance. Prisma CLI migrations and schema-level administrative commands require features (such as prepared statements and transactional locks) that connection poolers like PgBouncer do not support.
 Configuring `directUrl = env("DATABASE_URL_UNPOOLED")` in `prisma/schema.prisma` guarantees that runtime traffic operates through the pooler while migrations and CLI tasks run safely against the direct endpoint.
+
+### 7. Fail-Open Rate Limiter Decision
+If the persistent rate-limiting store (PostgreSQL `RateLimitBucket` table or connection) encounters an infrastructure outage or transaction failure, the rate limiter logs the error via `console.error` and **fails open**, allowing the request to proceed.
+**Design Rationale:**
+1. **Public Read Availability:** The primary mission of a public property data API is high availability. Blocking public readers during a temporary telemetry or rate-limit table hiccup degrades user experience far more than temporarily allowing traffic through without strict throttling.
+2. **Independent Write Protection:** Mutations (POST, PATCH, DELETE) are independently gated by the `x-api-key` write gate. An attacker cannot exploit a rate-limiting store outage to write unauthorized data, because the write key is verified in memory independently of database availability.
+
+### 8. Write Access Architecture & Fail-Closed Gate
+While read endpoints (`GET`, `HEAD`) remain fully public, mutation endpoints (`POST`, `PATCH`, `DELETE`) require administrative authentication:
+- **Header:** `x-api-key: <API_WRITE_KEY>`
+- **Timing-Safe Evaluation:** Keys are compared via `crypto.timingSafeEqual` after strictly matching buffer lengths, eliminating timing-side-channel vulnerabilities.
+- **Fail-Closed Guarantee:** If `API_WRITE_KEY` is unset or omitted in the server deployment environment, all write operations immediately reject with HTTP `503 Service Unavailable` (`SERVICE_UNAVAILABLE`).
+- **Pipeline Execution Order:** For every endpoint, requests execute in strict sequence:
+  `Rate Limit` $\rightarrow$ `Write Authentication (writes only)` $\rightarrow$ `Request Validation` $\rightarrow$ `Handler Execution`.
+  This guarantees that unauthorized write attempts (even with invalid or empty bodies) are rejected with `401 Unauthorized` before any CPU cycles or database lookups are spent on payload parsing or schema validation.
+
+### 9. CORS (Cross-Origin Resource Sharing) Strategy
+Browsers enforce the Same-Origin Policy by default. To support browser-based consumer applications:
+- **Read Endpoints (`GET`, `HEAD`):** Every read response attaches:
+  - `Access-Control-Allow-Origin: *`
+  - `Access-Control-Expose-Headers: Retry-After`
+- **Error Propagation:** CORS headers are attached to **all** read response statuses, including errors (`200`, `400`, `404`, `429`, `500`). This ensures browser clients can inspect error envelopes and parse `Retry-After` throttling instructions rather than receiving opaque generic network errors.
+- **Preflight Support:** An `OPTIONS` route handler returns HTTP `204 No Content` with `Access-Control-Allow-Methods: GET, HEAD, OPTIONS`.
+- **Private Writes:** CORS headers are **deliberately withheld** from `POST`, `PATCH`, and `DELETE`. Mutations are server-to-server or authorized administrative tasks; omitting CORS headers on write endpoints prevents untrusted third-party websites in a user's browser from issuing cross-origin mutations.
+
+### 10. Known Limitations
+- **Unbounded RateLimitBucket Table Growth:** `RateLimitBucket` rows are currently upserted per unique IP and endpoint combination, but records for expired windows are never automatically deleted. In high-traffic production environments with many unique client IPs, this table will continuously grow over time.
+- **Recommended Production Fix:** Implement periodic pruning of buckets older than a few window intervals (e.g., `DELETE FROM "RateLimitBucket" WHERE "windowStart" < NOW() - INTERVAL '1 hour'`). This can be scheduled as a background cron job (via Vercel Cron or PostgreSQL `pg_cron`) or executed opportunistically in a lightweight batch deletion during rate limit checks.
 
 ---
 
