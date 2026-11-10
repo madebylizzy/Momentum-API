@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Momentum Properties — Live Consumer</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+    .api-badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 0.8rem;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+    }
+    .filters-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .filters-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    input, select, button {
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text);
+    }
+    input:focus, select:focus {
+      outline: 2px solid var(--primary);
+      border-color: transparent;
+    }
+    .btn {
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.15s ease;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+    .btn-secondary {
+      background: #ffffff;
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .showing-text {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .pagination-controls {
+      display: flex;
+      gap: 8px;
+    }
+    .status-box {
+      padding: 24px;
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 0.95rem;
+    }
+    .status-loading {
+      color: var(--primary);
+    }
+    .status-empty {
+      color: var(--text-muted);
+    }
+    .status-error {
+      background: var(--danger-bg);
+      border-color: #fca5a5;
+      color: var(--danger);
+      text-align: left;
+    }
+    .status-error h3 {
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+    .listings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 640px) {
+      .listings-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .listing-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .listing-header {
+      margin-bottom: 8px;
+    }
+    .listing-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .listing-price {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 6px 0;
+    }
+    .listing-details {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .listing-desc {
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 12px;
+      flex-grow: 1;
+    }
+    .listing-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Momentum Properties — Consumer</h1>
+      <p class="subtitle">Standalone client consuming the public Momentum Properties REST API</p>
+      <span class="api-badge" id="api-endpoint-badge">API: https://momentum-api-ruby.vercel.app</span>
+    </header>
+
+    <section class="filters-card">
+      <form id="filters-form" class="filters-form">
+        <div class="form-group">
+          <label for="city-filter">City</label>
+          <input type="text" id="city-filter" placeholder="e.g. Austin, New York">
+        </div>
+        <div class="form-group">
+          <label for="min-price-filter">Min Price ($)</label>
+          <input type="number" id="min-price-filter" min="0" step="1000" placeholder="e.g. 500000">
+        </div>
+        <div class="form-group">
+          <label for="sort-filter">Sort By</label>
+          <select id="sort-filter">
+            <option value="createdAt">Date Listed</option>
+            <option value="price">Price</option>
+            <option value="bedrooms">Bedrooms</option>
+            <option value="bathrooms">Bathrooms</option>
+            <option value="city">City</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="order-filter">Order</label>
+          <select id="order-filter">
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn-primary" id="apply-btn">Apply Filters</button>
+        </div>
+      </form>
+    </section>
+
+    <div class="pagination-bar">
+      <div id="showing-text" class="showing-text">Loading...</div>
+      <div class="pagination-controls">
+        <button id="prev-btn" class="btn btn-secondary" disabled>&larr; Previous</button>
+        <button id="next-btn" class="btn btn-secondary" disabled>Next &rarr;</button>
+      </div>
+    </div>
+
+    <!-- State containers -->
+    <div id="loading-state" class="status-box status-loading" style="display: none;">
+      Loading listings...
+    </div>
+    <div id="empty-state" class="status-box status-empty" style="display: none;">
+      No listings match these filters
+    </div>
+    <div id="error-state" class="status-box status-error" style="display: none;">
+      <h3 id="error-code">Error</h3>
+      <p id="error-message"></p>
+    </div>
+
+    <!-- Listings Container -->
+    <main id="listings-container" class="listings-grid"></main>
+  </div>
+
+  <script>
+    // Constant holding live deployed API base URL (never localhost)
+    const API_BASE = "https://momentum-api-ruby.vercel.app";
+    const LIMIT = 20;
+
+    let currentOffset = 0;
+    let currentCity = "";
+    let currentMinPrice = "";
+    let currentSort = "createdAt";
+    let currentOrder = "desc";
+    let currentTotal = 0;
+    let hasMorePages = false;
+
+    // DOM Elements
+    const cityInput = document.getElementById("city-filter");
+    const minPriceInput = document.getElementById("min-price-filter");
+    const sortSelect = document.getElementById("sort-filter");
+    const orderSelect = document.getElementById("order-filter");
+    const filtersForm = document.getElementById("filters-form");
+    const prevBtn = document.getElementById("prev-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const showingText = document.getElementById("showing-text");
+    const loadingState = document.getElementById("loading-state");
+    const emptyState = document.getElementById("empty-state");
+    const errorState = document.getElementById("error-state");
+    const errorCode = document.getElementById("error-code");
+    const errorMessage = document.getElementById("error-message");
+    const listingsContainer = document.getElementById("listings-container");
+
+    function updatePaginationUI() {
+      if (currentTotal === 0) {
+        showingText.textContent = "Showing 0-0 of 0";
+      } else {
+        const start = currentOffset + 1;
+        const end = Math.min(currentOffset + LIMIT, currentTotal);
+        showingText.textContent = "Showing " + start + "-" + end + " of " + currentTotal;
+      }
+      prevBtn.disabled = currentOffset === 0;
+      nextBtn.disabled = !hasMorePages;
+    }
+
+    function showLoading() {
+      loadingState.style.display = "block";
+      emptyState.style.display = "none";
+      errorState.style.display = "none";
+      listingsContainer.replaceChildren();
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+    }
+
+    function showEmpty() {
+      loadingState.style.display = "none";
+      emptyState.style.display = "block";
+      errorState.style.display = "none";
+      listingsContainer.replaceChildren();
+      updatePaginationUI();
+    }
+
+    function showError(code, message, retryAfter) {
+      loadingState.style.display = "none";
+      emptyState.style.display = "none";
+      errorState.style.display = "block";
+      listingsContainer.replaceChildren();
+
+      errorCode.textContent = code || "ERROR";
+      let msg = message || "An unexpected error occurred.";
+      if (retryAfter) {
+        msg += " Please retry after " + retryAfter + " seconds.";
+      }
+      errorMessage.textContent = msg;
+      updatePaginationUI();
+    }
+
+    function renderListings(listings) {
+      loadingState.style.display = "none";
+      emptyState.style.display = "none";
+      errorState.style.display = "none";
+      listingsContainer.replaceChildren();
+
+      listings.forEach(function (listing) {
+        const card = document.createElement("article");
+        card.className = "listing-card";
+
+        const header = document.createElement("div");
+        header.className = "listing-header";
+
+        const title = document.createElement("h2");
+        title.className = "listing-title";
+        title.textContent = listing.title;
+
+        // Display price in dollars by dividing minor units (cents) by 100
+        const price = document.createElement("div");
+        price.className = "listing-price";
+        const dollarAmount = listing.price / 100;
+        price.textContent = dollarAmount.toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 0
+        });
+
+        const details = document.createElement("div");
+        details.className = "listing-details";
+        details.textContent =
+          listing.bedrooms + " beds • " +
+          listing.bathrooms + " baths • " +
+          (listing.squareFeet ? listing.squareFeet + " sq ft • " : "") +
+          listing.propertyType;
+
+        header.appendChild(title);
+        header.appendChild(price);
+        header.appendChild(details);
+
+        const desc = document.createElement("p");
+        desc.className = "listing-desc";
+        desc.textContent = listing.description;
+
+        const footer = document.createElement("div");
+        footer.className = "listing-footer";
+
+        const location = document.createElement("span");
+        location.textContent = listing.address + ", " + listing.city + ", " + listing.state;
+
+        const agentName = document.createElement("span");
+        if (listing.agent && listing.agent.name) {
+          agentName.textContent = "Agent: " + listing.agent.name;
+        }
+
+        footer.appendChild(location);
+        if (listing.agent && listing.agent.name) {
+          footer.appendChild(agentName);
+        }
+
+        card.appendChild(header);
+        card.appendChild(desc);
+        card.appendChild(footer);
+
+        listingsContainer.appendChild(card);
+      });
+
+      updatePaginationUI();
+    }
+
+    async function fetchListings() {
+      showLoading();
+
+      const params = new URLSearchParams();
+      params.set("limit", String(LIMIT));
+      params.set("offset", String(currentOffset));
+      params.set("sort", currentSort);
+      params.set("order", currentOrder);
+
+      if (currentCity.trim()) {
+        params.set("city", currentCity.trim());
+      }
+
+      // Convert dollar input to integer cents for the API
+      if (currentMinPrice !== "") {
+        const dollars = Number(currentMinPrice);
+        if (!isNaN(dollars) && dollars >= 0) {
+          params.set("minPrice", String(Math.round(dollars * 100)));
+        }
+      }
+
+      const url = API_BASE + "/api/v1/listings?" + params.toString();
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+
+        const retryAfter = response.headers.get("Retry-After");
+        let body;
+        try {
+          body = await response.json();
+        } catch (e) {
+          showError("PARSE_ERROR", "Failed to parse API response as JSON.", retryAfter);
+          return;
+        }
+
+        if (!response.ok) {
+          const err = body.error || {};
+          showError(err.code || ("HTTP_" + response.status), err.message || "Request failed", retryAfter);
+          return;
+        }
+
+        const data = body.data || [];
+        const meta = body.meta || {};
+        currentTotal = meta.total || 0;
+        hasMorePages = Boolean(meta.hasMore);
+
+        if (data.length === 0) {
+          showEmpty();
+        } else {
+          renderListings(data);
+        }
+      } catch (networkError) {
+        showError("NETWORK_ERROR", networkError.message || "Failed to connect to API.");
+      }
+    }
+
+    // Event Handlers
+    filtersForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      currentCity = cityInput.value;
+      currentMinPrice = minPriceInput.value;
+      currentSort = sortSelect.value;
+      currentOrder = orderSelect.value;
+      currentOffset = 0;
+      fetchListings();
+    });
+
+    prevBtn.addEventListener("click", function () {
+      if (currentOffset > 0) {
+        currentOffset = Math.max(0, currentOffset - LIMIT);
+        fetchListings();
+      }
+    });
+
+    nextBtn.addEventListener("click", function () {
+      if (hasMorePages) {
+        currentOffset = currentOffset + LIMIT;
+        fetchListings();
+      }
+    });
+
+    // Initial load
+    fetchListings();
+  </script>
+</body>
+</html>
