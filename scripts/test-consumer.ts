@@ -54,8 +54,8 @@ async function run() {
     const hasApiBase = consumerRes.includes("https://momentum-api-ruby.vercel.app");
     console.log(`Consumer served successfully: ${hasApiBase ? "YES (API_BASE verified)" : "NO"}`);
 
-    // 2. Simulate browser cross-origin request from consumer origin to live API
-    console.log("\nSimulating browser cross-origin fetch to live API with Origin header...");
+    // 2. Verify cross-origin response carries CORS headers when called with Origin header
+    console.log("\nVerifying cross-origin fetch to live API carries CORS headers...");
     const apiUrl = "https://momentum-api-ruby.vercel.app/api/v1/listings?limit=2";
     const liveApiResponse = execSync(
       `curl.exe -s -i -H "Origin: ${consumerOrigin}" "${apiUrl}"`
@@ -71,7 +71,9 @@ async function run() {
     console.log(`Response HTTP Status 200: ${is200 ? "YES" : "NO"}`);
 
     if (hasAllowOrigin && is200 && hasApiBase) {
-      console.log("\nVerdict: Consumer and CORS integration verified against live production API!");
+      console.log(
+        "\nVerdict: Verified cross-origin response carries CORS headers against live production API (browser behavior is evidenced by deployed consumer screenshot)."
+      );
     } else {
       console.error("\nVerdict: Verification failed!");
       process.exit(1);

@@ -246,8 +246,8 @@ async function run() {
         keyHeader: "None",
         expectedStatus: 200,
         actualStatus: res.status,
-        expectedCode: "N/A",
-        actualCode: res.data?.data ? "OK" : "ERROR",
+        expectedCode: undefined,
+        actualCode: undefined,
         passed,
         notes: "Public read operations require no authentication",
       });
@@ -282,8 +282,8 @@ async function run() {
         keyHeader: "Valid Key",
         expectedStatus: 201,
         actualStatus: createRes.status,
-        expectedCode: "CREATED",
-        actualCode: createPassed ? "CREATED" : (createRes.data?.error?.code ?? "ERROR"),
+        expectedCode: undefined,
+        actualCode: createPassed ? undefined : (createRes.data?.error?.code ?? "ERROR"),
         passed: createPassed,
         notes: `Created agent ID: ${createdAgentId ?? "none"}`,
       });
@@ -304,8 +304,8 @@ async function run() {
           keyHeader: "Valid Key",
           expectedStatus: 200,
           actualStatus: deleteRes.status,
-          expectedCode: "OK",
-          actualCode: deletePassed ? "DELETED" : (deleteRes.data?.error?.code ?? "ERROR"),
+          expectedCode: undefined,
+          actualCode: deletePassed ? undefined : (deleteRes.data?.error?.code ?? "ERROR"),
           passed: deletePassed,
           notes: "Resource cleaned up after test verification",
         });
@@ -373,8 +373,8 @@ async function run() {
         keyHeader: "Unset on Server",
         expectedStatus: 200,
         actualStatus: res.status,
-        expectedCode: "N/A",
-        actualCode: res.data?.data ? "OK" : "ERROR",
+        expectedCode: undefined,
+        actualCode: undefined,
         passed,
         notes: "Public read operations remain functional when key is unset",
       });
@@ -399,7 +399,7 @@ async function run() {
     if (!r.passed) allPassed = false;
     const mark = r.passed ? "PASS" : "FAIL";
     console.log(
-      `[${mark}] ${r.category.padEnd(28)} | ${r.method.padEnd(6)} ${r.endpoint.padEnd(36)} | Key: ${r.keyHeader.padEnd(16)} | Status: ${String(r.actualStatus).padEnd(3)} (exp ${r.expectedStatus}) | Code: ${r.actualCode || "N/A"}`
+      `[${mark}] ${r.category.padEnd(28)} | ${r.method.padEnd(6)} ${r.endpoint.padEnd(36)} | Key: ${r.keyHeader.padEnd(16)} | Status: ${String(r.actualStatus).padEnd(3)} (exp ${r.expectedStatus}) | Code: ${r.actualCode || ""}`
     );
   }
 
@@ -407,11 +407,11 @@ async function run() {
 
   // Write markdown results table to OS temp directory
   const mdRows = [
-    "| Category | Method | Endpoint | Key State | Expected | Actual | Envelope Code | Status |",
+    "| Category | Method | Endpoint | Key State | Expected | Actual | Error code (errors only) | Status |",
     "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ...results.map(
       (r) =>
-        `| ${r.category} | \`${r.method}\` | \`${r.endpoint}\` | ${r.keyHeader} | ${r.expectedStatus} | ${r.actualStatus} | \`${r.actualCode || "N/A"}\` | ${r.passed ? "PASS" : "FAIL"} |`
+        `| ${r.category} | \`${r.method}\` | \`${r.endpoint}\` | ${r.keyHeader} | ${r.expectedStatus} | ${r.actualStatus} | ${r.actualCode ? `\`${r.actualCode}\`` : ""} | ${r.passed ? "PASS" : "FAIL"} |`
     ),
   ].join("\n");
 

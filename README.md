@@ -416,6 +416,7 @@ Browsers enforce the Same-Origin Policy by default. To support browser-based con
 - **Error Propagation:** CORS headers are attached to **all** read response statuses, including errors (`200`, `400`, `404`, `429`, `500`). This ensures browser clients can inspect error envelopes and parse `Retry-After` throttling instructions rather than receiving opaque generic network errors.
 - **Preflight Support:** An `OPTIONS` route handler returns HTTP `204 No Content` with `Access-Control-Allow-Methods: GET, HEAD, OPTIONS`.
 - **Private Writes:** CORS headers are **deliberately withheld** from `POST`, `PATCH`, and `DELETE`. Mutations are server-to-server or authorized administrative tasks; omitting CORS headers on write endpoints prevents untrusted third-party websites in a user's browser from issuing cross-origin mutations.
+- **Verification Note:** `scripts/test-consumer.ts` is not a browser or CORS integration test; it is an automated check verifying that the cross-origin response carries the CORS headers when requested with an `Origin` header. Actual browser behavior is evidenced by the deployed consumer screenshot.
 
 ### 10. Known Limitations
 - **Unbounded RateLimitBucket Table Growth:** `RateLimitBucket` rows are currently upserted per unique IP and endpoint combination, but records for expired windows are never automatically deleted. In high-traffic production environments with many unique client IPs, this table will continuously grow over time.
@@ -436,7 +437,7 @@ Write operations (`POST`, `PATCH`, `DELETE`) across all `/api/v1` resources are 
 
 ### Automated Test Matrix Evidence (`scripts/test-write-gate.ts`):
 
-| Category | Method | Endpoint | Key State | Expected | Actual | Envelope Code | Status |
+| Category | Method | Endpoint | Key State | Expected | Actual | Error code (errors only) | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | No Key Matrix | `POST` | `/api/v1/agents` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
 | No Key Matrix | `PATCH` | `/api/v1/agents/nonexistent_id` | None | 401 | 401 | `UNAUTHORIZED` | PASS |
@@ -457,10 +458,10 @@ Write operations (`POST`, `PATCH`, `DELETE`) across all `/api/v1` resources are 
 | Wrong Key Matrix | `PATCH` | `/api/v1/viewings/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
 | Wrong Key Matrix | `DELETE` | `/api/v1/viewings/nonexistent_id` | Invalid Key | 401 | 401 | `UNAUTHORIZED` | PASS |
 | Gate Ordering Proof | `POST` | `/api/v1/agents` | None (Invalid Body) | 401 | 401 | `UNAUTHORIZED` | PASS |
-| Public Read Access | `GET` | `/api/v1/listings?limit=1` | None | 200 | 200 | `OK` | PASS |
-| Authorized Write Lifecycle | `POST` | `/api/v1/agents` | Valid Key | 201 | 201 | `CREATED` | PASS |
-| Authorized Write Lifecycle | `DELETE` | `/api/v1/agents/cmw93xwko00067cq05nk6q1z8` | Valid Key | 200 | 200 | `DELETED` | PASS |
+| Public Read Access | `GET` | `/api/v1/listings?limit=1` | None | 200 | 200 | | PASS |
+| Authorized Write Lifecycle | `POST` | `/api/v1/agents` | Valid Key | 201 | 201 | | PASS |
+| Authorized Write Lifecycle | `DELETE` | `/api/v1/agents/cmw93xwko00067cq05nk6q1z8` | Valid Key | 200 | 200 | | PASS |
 | Fail-Closed Verification | `POST` | `/api/v1/agents` | Unset on Server | 503 | 503 | `SERVICE_UNAVAILABLE` | PASS |
-| Fail-Closed Verification | `GET` | `/api/v1/listings?limit=1` | Unset on Server | 200 | 200 | `OK` | PASS |
+| Fail-Closed Verification | `GET` | `/api/v1/listings?limit=1` | Unset on Server | 200 | 200 | | PASS |
 
 
